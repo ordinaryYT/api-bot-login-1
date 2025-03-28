@@ -34,7 +34,7 @@ app.post('/api/bots/start', async (req, res) => {
 
         botController = new FNLB({ clusterName: 'FortniteBotCluster' });
         await botController.start({
-            apiToken: process.env.FNLB_API_TOKEN || 'your_api_token_here',
+            apiToken: process.env.FNLB_API_TOKEN || 'DGfCBefvjOU-UORpSFBh8gbArVEGkKK5xb-BB7kZk8NfEFj6hiCf8v2Nefu6',
             botsPerShard: 10,
             numberOfShards: 1
         });
