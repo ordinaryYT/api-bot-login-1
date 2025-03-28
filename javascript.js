@@ -5,11 +5,10 @@ const FNLB = require('fnlb');
 
 const app = express();
 
-// Enhanced CORS configuration
+// Configure CORS to allow requests from your frontend
 app.use(cors({
-  origin: ['http://localhost:8000', 'http://127.0.0.1:8000'],
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type']
+  origin: 'http://localhost:8000', // Update if your frontend uses different port
+  methods: ['GET', 'POST']
 }));
 
 // Middleware
@@ -18,40 +17,25 @@ app.use(express.json());
 // Bot manager instance
 let botManager = null;
 
-// API Routes
-const router = express.Router();
-
-// Health check endpoint
-router.get('/health', (req, res) => {
-  res.json({
-    status: 'healthy',
-    version: '1.0.0',
-    timestamp: new Date().toISOString(),
-    botsRunning: !!botManager
-  });
-});
-
-// Start bots endpoint
-router.post('/bots/start', async (req, res) => {
+// API Endpoints
+app.post('/api/bots/start', async (req, res) => {
   try {
     if (botManager) {
-      return res.status(400).json({
+      return res.status(400).json({ 
         success: false,
-        message: 'Bots are already running'
+        message: 'Bots are already running' 
       });
     }
 
     botManager = new FNLB();
-    
     await botManager.start({
       apiToken: process.env.FNLB_API_TOKEN || 'DGfCBefvjOU-UORpSFBh8gbArVEGkKK5xb-BB7kZk8NfEFj6hiCf8v2Nefu6',
       botsPerShard: 20
     });
 
-    res.json({
+    res.json({ 
       success: true,
-      message: 'Bots started successfully',
-      timestamp: new Date().toISOString()
+      message: 'Bots started successfully' 
     });
   } catch (error) {
     console.error('Start error:', error);
@@ -62,8 +46,7 @@ router.post('/bots/start', async (req, res) => {
   }
 });
 
-// Stop bots endpoint
-router.post('/bots/stop', async (req, res) => {
+app.post('/api/bots/stop', async (req, res) => {
   try {
     if (!botManager) {
       return res.status(400).json({
@@ -77,8 +60,7 @@ router.post('/bots/stop', async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Bots stopped successfully',
-      timestamp: new Date().toISOString()
+      message: 'Bots stopped successfully'
     });
   } catch (error) {
     console.error('Stop error:', error);
@@ -89,33 +71,14 @@ router.post('/bots/stop', async (req, res) => {
   }
 });
 
-// Status endpoint
-router.get('/bots/status', (req, res) => {
+app.get('/api/bots/status', (req, res) => {
   res.json({
-    running: !!botManager,
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Mount API router
-app.use('/api', router);
-
-// Error handling
-app.use((err, req, res, next) => {
-  console.error('Server error:', err);
-  res.status(500).json({
-    error: 'Internal server error',
-    message: err.message
+    running: !!botManager
   });
 });
 
 // Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on http://0.0.0.0:${PORT}`);
-  console.log('API Endpoints:');
-  console.log(`- GET    /api/health`);
-  console.log(`- POST   /api/bots/start`);
-  console.log(`- POST   /api/bots/stop`);
-  console.log(`- GET    /api/bots/status`);
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
