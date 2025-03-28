@@ -4,365 +4,185 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fortnite Bot Controller</title>
-    <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
     <style>
         :root {
             --primary: #007bff;
-            --primary-dark: #0056b3;
             --danger: #dc3545;
-            --danger-dark: #a71d2a;
             --success: #28a745;
-            --warning: #ffc107;
             --dark: #0a0a0a;
             --dark-light: #1a1a1a;
-            --gray: #a0a0a0;
             --light: #f8f9fa;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
         }
         
         body {
             background-color: var(--dark);
             color: var(--light);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
+            font-family: Arial, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
-            min-height: 100vh;
-            padding: 2rem 1rem;
+            padding: 2rem;
+            line-height: 1.6;
         }
         
         .container {
+            max-width: 800px;
             width: 100%;
-            max-width: 1200px;
-        }
-        
-        header {
-            text-align: center;
-            margin-bottom: 2rem;
         }
         
         h1 {
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
-            background: linear-gradient(90deg, var(--primary), var(--success));
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-        }
-        
-        .subtitle {
-            color: var(--gray);
-            font-size: 1.1rem;
-            max-width: 600px;
-            margin: 0 auto 1.5rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+            text-align: center;
         }
         
         .control-panel {
             background-color: var(--dark-light);
-            border-radius: 10px;
             padding: 1.5rem;
+            border-radius: 8px;
             margin-bottom: 2rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
         
         .button-group {
             display: flex;
             gap: 1rem;
-            justify-content: center;
             margin-bottom: 1rem;
-        }
-        
-        .btn {
-            padding: 0.75rem 1.5rem;
-            font-size: 1rem;
-            font-weight: 600;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            min-width: 180px;
-            display: flex;
-            align-items: center;
             justify-content: center;
-            gap: 0.5rem;
         }
         
-        .btn-primary {
+        button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 120px;
+        }
+        
+        #startButton {
             background-color: var(--primary);
             color: white;
         }
         
-        .btn-primary:hover {
-            background-color: var(--primary-dark);
+        #startButton:hover:not(:disabled) {
+            background-color: #0069d9;
             transform: translateY(-2px);
         }
         
-        .btn-danger {
+        #stopButton {
             background-color: var(--danger);
             color: white;
         }
         
-        .btn-danger:hover {
-            background-color: var(--danger-dark);
+        #stopButton:hover:not(:disabled) {
+            background-color: #c82333;
             transform: translateY(-2px);
         }
         
-        .btn:disabled {
-            opacity: 0.65;
+        button:disabled {
+            opacity: 0.6;
             cursor: not-allowed;
             transform: none !important;
         }
         
-        .status-container {
-            margin-top: 1rem;
-        }
-        
-        .status-message {
+        #statusMessage {
             padding: 1rem;
-            border-radius: 5px;
-            margin-bottom: 1rem;
+            border-radius: 4px;
+            margin-top: 1rem;
             display: none;
         }
         
-        .status-message.active {
+        .success {
+            background-color: rgba(40, 167, 69, 0.2);
+            border-left: 4px solid var(--success);
             display: block;
         }
         
-        .status-success {
-            background-color: rgba(40, 167, 69, 0.2);
-            border-left: 4px solid var(--success);
-        }
-        
-        .status-error {
+        .error {
             background-color: rgba(220, 53, 69, 0.2);
             border-left: 4px solid var(--danger);
+            display: block;
         }
         
-        .status-info {
+        .info {
             background-color: rgba(0, 123, 255, 0.2);
             border-left: 4px solid var(--primary);
-        }
-        
-        .bots-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 1.5rem;
-            width: 100%;
-        }
-        
-        .bot-card {
-            background-color: var(--dark-light);
-            border-radius: 10px;
-            padding: 1.5rem;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        }
-        
-        .bot-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            display: block;
         }
         
         .bot-status {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
+            margin-top: 2rem;
+            padding: 1rem;
+            background-color: var(--dark-light);
+            border-radius: 8px;
+        }
+        
+        .status-indicator {
+            display: inline-block;
             width: 12px;
             height: 12px;
             border-radius: 50%;
-            background-color: var(--danger);
+            margin-right: 8px;
         }
         
-        .bot-status.active {
+        .status-online {
             background-color: var(--success);
-            box-shadow: 0 0 10px var(--success);
+            box-shadow: 0 0 8px var(--success);
         }
         
-        .bot-icon {
-            width: 50px;
-            height: 50px;
-            background: linear-gradient(135deg, var(--primary), var(--warning));
-            border-radius: 10px;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: white;
-        }
-        
-        .bot-name {
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
-        
-        .bot-description {
-            color: var(--gray);
-            font-size: 0.9rem;
-        }
-        
-        .last-updated {
-            margin-top: 2rem;
-            text-align: center;
-            color: var(--gray);
-            font-size: 0.85rem;
-        }
-        
-        @media (max-width: 768px) {
-            .button-group {
-                flex-direction: column;
-            }
-            
-            .btn {
-                width: 100%;
-            }
-            
-            h1 {
-                font-size: 2rem;
-            }
+        .status-offline {
+            background-color: var(--danger);
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>Fortnite Bot Controller</h1>
-            <p class="subtitle">Manage your army of Fortnite bots. Starting may take 5-20 minutes.</p>
-        </header>
+        <h1>Fortnite Bot Controller</h1>
         
         <div class="control-panel">
             <div class="button-group">
-                <button id="startButton" class="btn btn-primary">
-                    <span class="btn-icon">▶</span>
-                    <span class="btn-text">Start Bots</span>
-                </button>
-                <button id="stopButton" class="btn btn-danger" disabled>
-                    <span class="btn-icon">⏹</span>
-                    <span class="btn-text">Stop Bots</span>
-                </button>
+                <button id="startButton" disabled>Start Bots</button>
+                <button id="stopButton" disabled>Stop Bots</button>
             </div>
             
-            <div class="status-container">
-                <div id="statusMessage" class="status-message"></div>
+            <div id="statusMessage"></div>
+            
+            <div class="bot-status">
+                <div>
+                    <span id="statusIndicator" class="status-indicator status-offline"></span>
+                    <span id="statusText">Connecting to backend...</span>
+                </div>
+                <div id="lastUpdated" style="margin-top: 0.5rem; font-size: 0.9rem; color: #aaa;"></div>
             </div>
-        </div>
-        
-        <div class="bots-grid">
-            <div class="bot-card">
-                <div class="bot-status" id="bot1-status"></div>
-                <div class="bot-icon">1</div>
-                <div class="bot-name">OGsbot1</div>
-                <div class="bot-description">Drops Tilted Towers every time. Still dies first.</div>
-            </div>
-            <div class="bot-card">
-                <div class="bot-status" id="bot2-status"></div>
-                <div class="bot-icon">2</div>
-                <div class="bot-name">OGsbot2</div>
-                <div class="bot-description">Builds a mansion in 2 seconds. Forgets to add doors.</div>
-            </div>
-            <div class="bot-card">
-                <div class="bot-status" id="bot3-status"></div>
-                <div class="bot-icon">3</div>
-                <div class="bot-name">OGsbot3</div>
-                <div class="bot-description">Carries 10 medkits. Still dies to fall damage.</div>
-            </div>
-            <div class="bot-card">
-                <div class="bot-status" id="bot4-status"></div>
-                <div class="bot-icon">4</div>
-                <div class="bot-name">OGsbot4</div>
-                <div class="bot-description">Camps in a bush. Wins by doing absolutely nothing.</div>
-            </div>
-            <div class="bot-card">
-                <div class="bot-status" id="bot5-status"></div>
-                <div class="bot-icon">5</div>
-                <div class="bot-name">OGsbot5</div>
-                <div class="bot-description">Always has a golden scar. Misses every shot.</div>
-            </div>
-            <div class="bot-card">
-                <div class="bot-status" id="bot6-status"></div>
-                <div class="bot-icon">6</div>
-                <div class="bot-name">OGsbot6</div>
-                <div class="bot-description">Dances after every kill. Gets sniped mid-emote.</div>
-            </div>
-            <div class="bot-card">
-                <div class="bot-status" id="bot7-status"></div>
-                <div class="bot-icon">7</div>
-                <div class="bot-name">OGsbot7</div>
-                <div class="bot-description">Rides a shopping cart into the storm. No regrets.</div>
-            </div>
-            <div class="bot-card">
-                <div class="bot-status" id="bot8-status"></div>
-                <div class="bot-icon">8</div>
-                <div class="bot-name">OGsbot8</div>
-                <div class="bot-description">Steals your loot. Blames it on lag.</div>
-            </div>
-            <div class="bot-card">
-                <div class="bot-status" id="bot9-status"></div>
-                <div class="bot-icon">9</div>
-                <div class="bot-name">OGsbot9</div>
-                <div class="bot-description">Always revives you. In the middle of a firefight.</div>
-            </div>
-            <div class="bot-card">
-                <div class="bot-status" id="bot10-status"></div>
-                <div class="bot-icon">10</div>
-                <div class="bot-name">OGsbot10</div>
-                <div class="bot-description">Throws grenades like confetti. Accidentally blows itself up.</div>
-            </div>
-        </div>
-        
-        <div class="last-updated" id="lastUpdated">
-            System status: Loading...
         </div>
     </div>
 
     <script>
         // Configuration
-        const CONFIG = {
-            // Auto-detect backend URL based on frontend host
-            API_BASE_URL: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-                ? 'http://localhost:3000/api'
-                : '/api', // Relative path for production
-            EMAILJS_USER_ID: 'Js8Z6hkbFnkcttBbT',
-            EMAILJS_SERVICE_ID: 'service_lglu81w',
-            EMAILJS_TEMPLATE_ID: 'template_zplkxfb',
-            NOTIFICATION_EMAIL: 'baileyksmith2010@gmail.com',
-            RETRY_COUNT: 3,
-            RETRY_DELAY: 1000
+        const config = {
+            apiBaseUrl: window.location.hostname === 'localhost' 
+                ? 'http://localhost:3000/api' 
+                : '/api',
+            retryCount: 3,
+            retryDelay: 1000,
+            updateInterval: 5000 // Update status every 5 seconds
         };
-
-        // Initialize EmailJS
-        emailjs.init(CONFIG.EMAILJS_USER_ID);
 
         // DOM Elements
         const elements = {
             startButton: document.getElementById('startButton'),
             stopButton: document.getElementById('stopButton'),
             statusMessage: document.getElementById('statusMessage'),
-            lastUpdated: document.getElementById('lastUpdated'),
-            botStatusIndicators: Array.from({length: 10}, (_, i) => 
-                document.getElementById(`bot${i+1}-status`))
+            statusIndicator: document.getElementById('statusIndicator'),
+            statusText: document.getElementById('statusText'),
+            lastUpdated: document.getElementById('lastUpdated')
         };
 
-        // State
-        let appState = {
-            botsRunning: false,
-            lastUpdate: null
-        };
-
-        // API Service with retry logic
-        const apiService = {
+        // API Service
+        const api = {
             async request(endpoint, method = 'GET', body = null) {
-                const url = `${CONFIG.API_BASE_URL}${endpoint}`;
+                const url = `${config.apiBaseUrl}${endpoint}`;
                 const options = {
                     method,
                     headers: {
@@ -372,29 +192,23 @@
                     body: body ? JSON.stringify(body) : null
                 };
 
-                let attempts = 0;
-                let lastError = null;
-
-                while (attempts < CONFIG.RETRY_COUNT) {
-                    try {
-                        const response = await fetch(url, options);
-                        
-                        if (!response.ok) {
-                            const errorData = await response.json().catch(() => ({}));
-                            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-                        }
-
-                        return await response.json();
-                    } catch (error) {
-                        lastError = error;
-                        attempts++;
-                        if (attempts < CONFIG.RETRY_COUNT) {
-                            await new Promise(resolve => setTimeout(resolve, CONFIG.RETRY_DELAY));
-                        }
+                try {
+                    const response = await fetch(url, options);
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(errorData.message || `HTTP error: ${response.status}`);
                     }
-                }
 
-                throw lastError;
+                    return await response.json();
+                } catch (error) {
+                    console.error(`API request failed: ${endpoint}`, error);
+                    throw error;
+                }
+            },
+
+            async healthCheck() {
+                return this.request('/health');
             },
 
             async startBots() {
@@ -407,153 +221,132 @@
 
             async getStatus() {
                 return this.request('/bots/status');
-            },
-
-            async healthCheck() {
-                return this.request('/health');
             }
         };
 
-        // UI Service
-        const uiService = {
-            setLoading(loading) {
-                elements.startButton.disabled = loading;
-                elements.stopButton.disabled = loading;
-            },
+        // UI Functions
+        function showStatus(message, type = 'info') {
+            elements.statusMessage.textContent = message;
+            elements.statusMessage.className = type;
+        }
 
-            showStatus(message, type = 'info') {
-                elements.statusMessage.textContent = message;
-                elements.statusMessage.className = `status-message active status-${type}`;
-            },
+        function setLoading(loading) {
+            elements.startButton.disabled = loading;
+            elements.stopButton.disabled = loading;
+        }
 
-            updateBotStates(running) {
-                appState.botsRunning = running;
-                elements.botStatusIndicators.forEach(el => 
-                    el.classList.toggle('active', running));
-                
-                elements.startButton.disabled = running;
-                elements.stopButton.disabled = !running;
-            },
-
-            updateLastUpdated() {
-                appState.lastUpdate = new Date();
-                elements.lastUpdated.textContent = 
-                    `Last updated: ${appState.lastUpdate.toLocaleString()}`;
+        function updateConnectionStatus(connected) {
+            if (connected) {
+                elements.statusIndicator.className = 'status-indicator status-online';
+                elements.statusText.textContent = 'Connected to backend';
+            } else {
+                elements.statusIndicator.className = 'status-indicator status-offline';
+                elements.statusText.textContent = 'Disconnected from backend';
             }
-        };
+        }
 
-        // Notification Service
-        const notificationService = {
-            async send(type, message) {
-                try {
-                    await emailjs.send(
-                        CONFIG.EMAILJS_SERVICE_ID,
-                        CONFIG.EMAILJS_TEMPLATE_ID,
-                        {
-                            to_email: CONFIG.NOTIFICATION_EMAIL,
-                            message: `${type}: ${message} at ${new Date().toLocaleString()}`
-                        }
-                    );
-                } catch (error) {
-                    console.error('Failed to send notification:', error);
-                }
-            },
-
-            logToLocalStorage(action) {
-                try {
-                    const logs = JSON.parse(localStorage.getItem("botLogs")) || [];
-                    logs.push(`${action} at ${new Date().toLocaleString()}`);
-                    localStorage.setItem("botLogs", JSON.stringify(logs));
-                } catch (error) {
-                    console.error('Failed to log to localStorage:', error);
-                }
-            }
-        };
+        function updateLastUpdated() {
+            elements.lastUpdated.textContent = `Last updated: ${new Date().toLocaleString()}`;
+        }
 
         // Event Handlers
         async function handleStart() {
-            uiService.setLoading(true);
-            uiService.showStatus('Starting bots... Please wait.', 'info');
+            setLoading(true);
+            showStatus('Starting bots... This may take several minutes', 'info');
 
             try {
-                const result = await apiService.startBots();
-                
-                if (result.success) {
-                    uiService.showStatus('Bots started successfully!', 'success');
-                    uiService.updateBotStates(true);
-                    await notificationService.send('Bots Started', 'All bots started successfully');
-                    notificationService.logToLocalStorage('Bots started');
-                } else {
-                    throw new Error(result.message || 'Failed to start bots');
-                }
+                const result = await api.startBots();
+                showStatus(result.message, 'success');
+                elements.stopButton.disabled = false;
+                updateBotStatus();
             } catch (error) {
-                uiService.showStatus(`Error: ${error.message}`, 'error');
-                await notificationService.send('Start Failed', error.message);
+                showStatus(`Error: ${error.message}`, 'error');
             } finally {
-                uiService.setLoading(false);
-                uiService.updateLastUpdated();
+                setLoading(false);
+                updateLastUpdated();
             }
         }
 
         async function handleStop() {
-            uiService.setLoading(true);
-            uiService.showStatus('Stopping bots... Please wait.', 'info');
+            setLoading(true);
+            showStatus('Stopping bots...', 'info');
 
             try {
-                const result = await apiService.stopBots();
-                
-                if (result.success) {
-                    uiService.showStatus('Bots stopped successfully!', 'success');
-                    uiService.updateBotStates(false);
-                    await notificationService.send('Bots Stopped', 'All bots stopped successfully');
-                    notificationService.logToLocalStorage('Bots stopped');
-                } else {
-                    throw new Error(result.message || 'Failed to stop bots');
-                }
+                const result = await api.stopBots();
+                showStatus(result.message, 'success');
+                elements.stopButton.disabled = true;
+                updateBotStatus();
             } catch (error) {
-                uiService.showStatus(`Error: ${error.message}`, 'error');
-                await notificationService.send('Stop Failed', error.message);
+                showStatus(`Error: ${error.message}`, 'error');
             } finally {
-                uiService.setLoading(false);
-                uiService.updateLastUpdated();
+                setLoading(false);
+                updateLastUpdated();
             }
         }
 
-        // Initialization
-        async function initialize() {
-            uiService.showStatus('Connecting to backend...', 'info');
-            
+        // Bot status polling
+        let statusInterval;
+
+        async function updateBotStatus() {
             try {
-                // First verify backend connection
-                const health = await apiService.healthCheck();
-                
-                // Then get current status
-                const status = await apiService.getStatus();
-                uiService.updateBotStates(status.running);
-                uiService.showStatus(status.running ? 
-                    'Bots are currently running' : 'Bots are ready to start', 
-                    'info');
+                const status = await api.getStatus();
+                elements.startButton.disabled = status.running;
+                elements.stopButton.disabled = !status.running;
+                return true;
             } catch (error) {
-                console.error('Initialization error:', error);
-                uiService.showStatus(
-                    `Connection error: ${error.message}. Please ensure:
-                    1. Backend server is running (check terminal)
-                    2. Correct API URL is configured
-                    3. No CORS issues exist`,
+                console.error('Status update failed:', error);
+                return false;
+            } finally {
+                updateLastUpdated();
+            }
+        }
+
+        async function startStatusPolling() {
+            // Initial status check
+            const success = await updateBotStatus();
+            updateConnectionStatus(success);
+            
+            // Set up periodic polling
+            statusInterval = setInterval(async () => {
+                const success = await updateBotStatus();
+                updateConnectionStatus(success);
+            }, config.updateInterval);
+        }
+
+        // Initialize App
+        async function initialize() {
+            // Test backend connection
+            try {
+                await api.healthCheck();
+                updateConnectionStatus(true);
+                
+                // Enable start button
+                elements.startButton.disabled = false;
+                
+                // Start status polling
+                startStatusPolling();
+                
+                // Set up event listeners
+                elements.startButton.addEventListener('click', handleStart);
+                elements.stopButton.addEventListener('click', handleStop);
+                
+                showStatus('System ready', 'success');
+            } catch (error) {
+                showStatus(
+                    `Failed to connect to backend: ${error.message}\n\n` +
+                    'Please ensure:\n' +
+                    '1. Backend server is running\n' +
+                    '2. Correct API URL is configured\n' +
+                    '3. No CORS issues exist', 
                     'error'
                 );
-                elements.startButton.disabled = true;
-                elements.stopButton.disabled = true;
+                updateConnectionStatus(false);
             } finally {
-                uiService.updateLastUpdated();
+                updateLastUpdated();
             }
         }
 
-        // Event Listeners
-        elements.startButton.addEventListener('click', handleStart);
-        elements.stopButton.addEventListener('click', handleStop);
-
-        // Initialize the app
+        // Start the application
         document.addEventListener('DOMContentLoaded', initialize);
     </script>
 </body>
