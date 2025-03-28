@@ -4,95 +4,105 @@ const cors = require('cors');
 const FNLB = require('fnlb');
 
 const app = express();
-
-// Configure CORS for Vercel
-const allowedOrigins = [
-  'https://your-frontend.vercel.app', // Your Vercel frontend URL
-  'http://localhost:8000'             // For local testing
-];
-
-app.use(cors({
-  origin: function(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type']
-}));
-
+app.use(cors());
 app.use(express.json());
 
-let botManager = null;
+// Enhanced bot control with status tracking
+let botController = null;
+const botStatus = {
+    running: false,
+    bots: Array(10).fill({ status: 'inactive', lastActivity: null })
+};
 
 // API Endpoints
-app.post('/start', async (req, res) => {
-  try {
-    if (botManager) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'Bots are already running' 
-      });
+app.post('/api/bots/start', async (req, res) => {
+    try {
+        if (botStatus.running) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Bots are already running' 
+            });
+        }
+
+        botController = new FNLB();
+        await botController.start({
+            apiToken: process.env.FNLB_API_TOKEN || 'DGfCBefvjOU-UORpSFBh8gbArVEGkKK5xb-BB7kZk8NfEFj6hiCf8v2Nefu6',
+            botsPerShard: 20
+        });
+
+        // Update status
+        botStatus.running = true;
+        botStatus.bots = botStatus.bots.map(() => ({
+            status: 'active',
+            lastActivity: new Date().toISOString()
+        }));
+
+        res.json({ 
+            success: true, 
+            message: 'Bots started successfully',
+            status: botStatus
+        });
+    } catch (error) {
+        console.error('Error starting bots:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: error.message 
+        });
     }
+});
 
-    botManager = new FNLB();
-    await botManager.start({
-      apiToken: process.env.FNLB_API_TOKEN, // Set in Vercel env vars
-      botsPerShard: 10
-    });
+app.post('/api/bots/stop', async (req, res) => {
+    try {
+        if (!botStatus.running || !botController) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'No bots are currently running' 
+            });
+        }
 
+        await botController.stop();
+        botController = null;
+        
+        // Update status
+        botStatus.running = false;
+        botStatus.bots = botStatus.bots.map(bot => ({
+            ...bot,
+            status: 'inactive'
+        }));
+
+        res.json({ 
+            success: true, 
+            message: 'Bots stopped successfully',
+            status: botStatus
+        });
+    } catch (error) {
+        console.error('Error stopping bots:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: error.message 
+        });
+    }
+});
+
+app.get('/api/bots/status', (req, res) => {
     res.json({ 
-      success: true,
-      message: 'Bots started successfully' 
+        success: true,
+        status: botStatus
     });
-  } catch (error) {
-    console.error('Start error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Failed to start bots'
-    });
-  }
 });
 
-app.post('/stop', async (req, res) => {
-  try {
-    if (!botManager) {
-      return res.status(400).json({
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({
         success: false,
-        message: 'No bots are currently running'
-      });
-    }
-
-    await botManager.stop();
-    botManager = null;
-
-    res.json({
-      success: true,
-      message: 'Bots stopped successfully'
+        message: 'Internal server error'
     });
-  } catch (error) {
-    console.error('Stop error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Failed to stop bots'
-    });
-  }
 });
 
-app.get('/status', (req, res) => {
-  res.json({
-    running: !!botManager
-  });
+// Start server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Bot control API available at http://localhost:${PORT}/api/bots`);
 });
-
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'healthy',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Export for Vercel
-module.exports = app;
