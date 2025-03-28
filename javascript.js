@@ -2,107 +2,98 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const FNLB = require('fnlb');
+const path = require('path');
 
 const app = express();
 
-// Enable CORS
+// Enhanced CORS configuration
 app.use(cors({
-    origin: ['http://localhost', 'http://127.0.0.1'],
-    credentials: true
+    origin: '*',
+    methods: ['GET', 'POST']
 }));
+
 app.use(express.json());
 
-// Bot status tracking
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Bot control variables
 let botController = null;
-const botStatus = {
-    running: false,
-    bots: Array(10).fill({
-        status: 'inactive',
-        lastActivity: null
-    })
-};
+let botsRunning = false;
 
 // API Endpoints
 app.post('/api/bots/start', async (req, res) => {
     try {
-        if (botStatus.running) {
-            return res.status(400).json({
-                success: false,
-                message: 'Bots are already running'
+        if (botsRunning) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Bots are already running' 
             });
         }
 
-        botController = new FNLB({ clusterName: 'FortniteBotCluster' });
+        botController = new FNLB();
         await botController.start({
-            apiToken: process.env.FNLB_API_TOKEN || 'DGfCBefvjOU-UORpSFBh8gbArVEGkKK5xb-BB7kZk8NfEFj6hiCf8v2Nefu6',
-            botsPerShard: 10,
-            numberOfShards: 1
+            apiToken: process.env.FNLB_API_TOKEN || 'your_api_token_here',
+            botsPerShard: 10
         });
 
-        botStatus.running = true;
-        botStatus.bots = botStatus.bots.map(() => ({
-            status: 'active',
-            lastActivity: new Date().toISOString()
-        }));
-
-        res.json({
-            success: true,
+        botsRunning = true;
+        res.json({ 
+            success: true, 
             message: 'Bots started successfully',
-            status: botStatus
+            running: true
         });
     } catch (error) {
         console.error('Error starting bots:', error);
-        res.status(500).json({
-            success: false,
-            message: error.message
+        res.status(500).json({ 
+            success: false, 
+            message: error.message 
         });
     }
 });
 
 app.post('/api/bots/stop', async (req, res) => {
     try {
-        if (!botStatus.running || !botController) {
-            return res.status(400).json({
-                success: false,
-                message: 'No bots are currently running'
+        if (!botsRunning || !botController) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'No bots are currently running' 
             });
         }
 
         await botController.stop();
         botController = null;
-        botStatus.running = false;
-        botStatus.bots = botStatus.bots.map(bot => ({
-            ...bot,
-            status: 'inactive'
-        }));
+        botsRunning = false;
 
-        res.json({
-            success: true,
+        res.json({ 
+            success: true, 
             message: 'Bots stopped successfully',
-            status: botStatus
+            running: false
         });
     } catch (error) {
         console.error('Error stopping bots:', error);
-        res.status(500).json({
-            success: false,
-            message: error.message
+        res.status(500).json({ 
+            success: false, 
+            message: error.message 
         });
     }
 });
 
 app.get('/api/bots/status', (req, res) => {
-    res.json({
-        success: true,
-        status: botStatus
+    res.json({ 
+        running: botsRunning,
+        bots: Array(10).fill({ status: botsRunning ? 'active' : 'inactive' })
     });
 });
 
-// Serve static files
-app.use(express.static('public'));
+// Handle all other routes - serve index.html
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
-    console.log(`Bot control available at http://localhost:${PORT}`);
+    console.log(`Bot control API available at http://localhost:${PORT}/api/bots`);
 });
