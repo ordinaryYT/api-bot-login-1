@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Send Message</title>
+    <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+    <style>
+        /* General Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Body Styling */
+        body {
+            background-color: #0a0a0a;
+            color: #ffffff;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        /* Container Styling */
+        .container {
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        /* Heading Styling */
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        /* Paragraph Styling */
+        p {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            color: #a0a0a0;
+        }
+
+        /* Button Styling */
+        .start-button {
+            background-color: #007bff;
+            color: #ffffff;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-bottom: 20px;
+            display: block;
+            width: 200px;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        .start-button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Bots Section Styling */
+        .bots-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            width: 100%;
+        }
+
+        .bot-card {
+            background-color: #1a1a1a;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: left;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .bot-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .bot-icon {
+            width: 50px;
+            height: 50px;
+            background-color: #007bff;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .bot-name {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .bot-description {
+            font-size: 1rem;
+            color: #a0a0a0;
+        }
+
+        /* Status indicator */
+        .status {
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .status.active {
+            display: block;
+            background-color: #1a1a1a;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome</h1>
+        <p>Click the button below to start the bots. (might take 5-20 minutes).</p>
+        <button class="start-button" id="startButton">Start</button>
+        
+        <div id="statusMessage" class="status"></div>
+
+        <!-- Bots Section -->
+        <div class="bots-section">
+            <div class="bot-card"><div class="bot-icon"></div><div class="bot-name">OGsbot1</div><div class="bot-description">Drops Tilted Towers every time. Still dies first.</div></div>
+            <div class="bot-card"><div class="bot-icon"></div><div class="bot-name">OGsbot2</div><div class="bot-description">Builds a mansion in 2 seconds. Forgets to add doors.</div></div>
+            <div class="bot-card"><div class="bot-icon"></div><div class="bot-name">OGsbot3</div><div class="bot-description">Carries 10 medkits. Still dies to fall damage.</div></div>
+            <div class="bot-card"><div class="bot-icon"></div><div class="bot-name">OGsbot4</div><div class="bot-description">Camps in a bush. Wins by doing absolutely nothing.</div></div>
+            <div class="bot-card"><div class="bot-icon"></div><div class="bot-name">OGsbot5</div><div class="bot-description">Always has a golden scar. Misses every shot.</div></div>
+            <div class="bot-card"><div class="bot-icon"></div><div class="bot-name">OGsbot6</div><div class="bot-description">Dances after every kill. Gets sniped mid-emote.</div></div>
+            <div class="bot-card"><div class="bot-icon"></div><div class="bot-name">OGsbot7</div><div class="bot-description">Rides a shopping cart into the storm. No regrets.</div></div>
+            <div class="bot-card"><div class="bot-icon"></div><div class="bot-name">OGsbot8</div><div class="bot-description">Steals your loot. Blames it on lag.</div></div>
+            <div class="bot-card"><div class="bot-icon"></div><div class="bot-name">OGsbot9</div><div class="bot-description">Always revives you. In the middle of a firefight.</div></div>
+            <div class="bot-card"><div class="bot-icon"></div><div class="bot-name">OGsbot10</div><div class="bot-description">Throws grenades like confetti. Accidentally blows itself up.</div></div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            emailjs.init("Js8Z6hkbFnkcttBbT"); // Replace with your EmailJS user ID
+        })();
+
+        document.getElementById('startButton').addEventListener('click', async function() {
+            const button = this;
+            const statusMessage = document.getElementById('statusMessage');
+            
+            // Disable button and show loading state
+            button.disabled = true;
+            button.textContent = 'Starting...';
+            statusMessage.textContent = 'Starting bots... This may take 5-20 minutes.';
+            statusMessage.classList.add('active');
+
+            try {
+                let timestamp = new Date().toLocaleString();
+                let logEntry = "Start button clicked at: " + timestamp;
+
+                // Save log entry to localStorage
+                let logs = JSON.parse(localStorage.getItem("logs")) || [];
+                logs.push(logEntry);
+                localStorage.setItem("logs", JSON.stringify(logs));
+
+                // Import and start FNLB
+                const { default: FNLB } = await import('https://cdn.jsdelivr.net/npm/fnlb/dist/fnlb.min.js');
+                const fnlb = new FNLB();
+                
+                statusMessage.textContent = 'Initializing bots...';
+                
+                await fnlb.start({
+                    apiToken: 'DGfCBefvjOU-UORpSFBh8gbArVEGkKK5xb-BB7kZk8NfEFj6hiCf8v2Nefu6', // Replace with your actual API token
+                    botsPerShard: 20
+                });
+
+                statusMessage.textContent = 'Bots started successfully!';
+                
+                // Send email notification
+                await emailjs.send("service_lglu81w", "template_zplkxfb", {
+                    to_email: "baileyksmith2010@gmail.com",
+                    message: "Bots started successfully at: " + timestamp
+                });
+                
+                button.textContent = 'Started!';
+            } catch (error) {
+                console.error('Error:', error);
+                statusMessage.textContent = 'Error starting bots: ' + error.message;
+                
+                // Send error email
+                await emailjs.send("service_lglu81w", "template_zplkxfb", {
+                    to_email: "baileyksmith2010@gmail.com",
+                    message: "Failed to start bots: " + error.message
+                });
+                
+                button.textContent = 'Error - Try Again';
+                button.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
