@@ -328,11 +328,16 @@
     <script>
         // Configuration
         const CONFIG = {
-            API_BASE_URL: 'http://localhost:3000/api',
+            // Auto-detect backend URL based on frontend host
+            API_BASE_URL: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                ? 'http://localhost:3000/api'
+                : '/api', // Relative path for production
             EMAILJS_USER_ID: 'Js8Z6hkbFnkcttBbT',
             EMAILJS_SERVICE_ID: 'service_lglu81w',
             EMAILJS_TEMPLATE_ID: 'template_zplkxfb',
-            NOTIFICATION_EMAIL: 'baileyksmith2010@gmail.com'
+            NOTIFICATION_EMAIL: 'baileyksmith2010@gmail.com',
+            RETRY_COUNT: 3,
+            RETRY_DELAY: 1000
         };
 
         // Initialize EmailJS
@@ -354,7 +359,7 @@
             lastUpdate: null
         };
 
-        // API Service
+        // API Service with retry logic
         const apiService = {
             async request(endpoint, method = 'GET', body = null) {
                 const url = `${CONFIG.API_BASE_URL}${endpoint}`;
@@ -367,19 +372,29 @@
                     body: body ? JSON.stringify(body) : null
                 };
 
-                try {
-                    const response = await fetch(url, options);
-                    
-                    if (!response.ok) {
-                        const errorData = await response.json().catch(() => ({}));
-                        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-                    }
+                let attempts = 0;
+                let lastError = null;
 
-                    return await response.json();
-                } catch (error) {
-                    console.error(`API ${method} ${endpoint} failed:`, error);
-                    throw error;
+                while (attempts < CONFIG.RETRY_COUNT) {
+                    try {
+                        const response = await fetch(url, options);
+                        
+                        if (!response.ok) {
+                            const errorData = await response.json().catch(() => ({}));
+                            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+                        }
+
+                        return await response.json();
+                    } catch (error) {
+                        lastError = error;
+                        attempts++;
+                        if (attempts < CONFIG.RETRY_COUNT) {
+                            await new Promise(resolve => setTimeout(resolve, CONFIG.RETRY_DELAY));
+                        }
+                    }
                 }
+
+                throw lastError;
             },
 
             async startBots() {
@@ -396,34 +411,6 @@
 
             async healthCheck() {
                 return this.request('/health');
-            }
-        };
-
-        // Notification Service
-        const notificationService = {
-            async send(type, message) {
-                try {
-                    await emailjs.send(
-                        CONFIG.EMAILJS_SERVICE_ID,
-                        CONFIG.EMAILJS_TEMPLATE_ID,
-                        {
-                            to_email: CONFIG.NOTIFICATION_EMAIL,
-                            message: `${type}: ${message} at ${new Date().toLocaleString()}`
-                        }
-                    );
-                } catch (error) {
-                    console.error('Failed to send notification:', error);
-                }
-            },
-
-            logToLocalStorage(action) {
-                try {
-                    const logs = JSON.parse(localStorage.getItem("botLogs")) || [];
-                    logs.push(`${action} at ${new Date().toLocaleString()}`);
-                    localStorage.setItem("botLogs", JSON.stringify(logs));
-                } catch (error) {
-                    console.error('Failed to log to localStorage:', error);
-                }
             }
         };
 
@@ -452,6 +439,34 @@
                 appState.lastUpdate = new Date();
                 elements.lastUpdated.textContent = 
                     `Last updated: ${appState.lastUpdate.toLocaleString()}`;
+            }
+        };
+
+        // Notification Service
+        const notificationService = {
+            async send(type, message) {
+                try {
+                    await emailjs.send(
+                        CONFIG.EMAILJS_SERVICE_ID,
+                        CONFIG.EMAILJS_TEMPLATE_ID,
+                        {
+                            to_email: CONFIG.NOTIFICATION_EMAIL,
+                            message: `${type}: ${message} at ${new Date().toLocaleString()}`
+                        }
+                    );
+                } catch (error) {
+                    console.error('Failed to send notification:', error);
+                }
+            },
+
+            logToLocalStorage(action) {
+                try {
+                    const logs = JSON.parse(localStorage.getItem("botLogs")) || [];
+                    logs.push(`${action} at ${new Date().toLocaleString()}`);
+                    localStorage.setItem("botLogs", JSON.stringify(logs));
+                } catch (error) {
+                    console.error('Failed to log to localStorage:', error);
+                }
             }
         };
 
@@ -506,24 +521,25 @@
 
         // Initialization
         async function initialize() {
+            uiService.showStatus('Connecting to backend...', 'info');
+            
             try {
-                // First check if backend is alive
+                // First verify backend connection
                 const health = await apiService.healthCheck();
-                if (health.status !== 'healthy') {
-                    throw new Error('Backend service unavailable');
-                }
-
-                // Then get current bot status
+                
+                // Then get current status
                 const status = await apiService.getStatus();
                 uiService.updateBotStates(status.running);
                 uiService.showStatus(status.running ? 
                     'Bots are currently running' : 'Bots are ready to start', 
                     'info');
-                
-                console.log('Initialization complete. Current status:', status);
             } catch (error) {
+                console.error('Initialization error:', error);
                 uiService.showStatus(
-                    `Failed to initialize: ${error.message}. Please check the backend.`,
+                    `Connection error: ${error.message}. Please ensure:
+                    1. Backend server is running (check terminal)
+                    2. Correct API URL is configured
+                    3. No CORS issues exist`,
                     'error'
                 );
                 elements.startButton.disabled = true;

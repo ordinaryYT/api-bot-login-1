@@ -5,8 +5,30 @@ const FNLB = require('fnlb');
 
 const app = express();
 
+// Enhanced CORS configuration
+const corsOptions = {
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'http://localhost',
+      'http://127.0.0.1',
+      'http://localhost:8000',
+      'http://127.0.0.1:8000'
+    ];
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
 // Middleware
-app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -14,12 +36,24 @@ app.use(express.urlencoded({ extended: true }));
 let botManager = null;
 const botStates = Array(10).fill(false);
 
+// Helper middleware
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path}`);
+  next();
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'healthy',
+    version: '1.0.0',
     timestamp: new Date().toISOString(),
-    botsRunning: !!botManager
+    environment: process.env.NODE_ENV || 'development',
+    endpoints: {
+      start: 'POST /api/bots/start',
+      stop: 'POST /api/bots/stop',
+      status: 'GET /api/bots/status'
+    }
   });
 });
 
@@ -40,7 +74,6 @@ app.post('/api/bots/start', async (req, res) => {
       botsPerShard: 20
     });
 
-    // Update all bot states
     botStates.fill(true);
 
     res.status(200).json({
@@ -50,7 +83,7 @@ app.post('/api/bots/start', async (req, res) => {
       botStates: botStates
     });
   } catch (error) {
-    console.error('Bot startup error:', error);
+    console.error('Start error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to start bots',
@@ -81,7 +114,7 @@ app.post('/api/bots/stop', async (req, res) => {
       botStates: botStates
     });
   } catch (error) {
-    console.error('Bot shutdown error:', error);
+    console.error('Stop error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to stop bots',
@@ -90,7 +123,7 @@ app.post('/api/bots/stop', async (req, res) => {
   }
 });
 
-// Bot status endpoint
+// Status endpoint
 app.get('/api/bots/status', (req, res) => {
   res.status(200).json({
     running: !!botManager,
@@ -99,13 +132,24 @@ app.get('/api/bots/status', (req, res) => {
   });
 });
 
+// Error handling
+app.use((err, req, res, next) => {
+  console.error('Server error:', err);
+  res.status(500).json({
+    error: 'Internal server error',
+    message: err.message,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`API Endpoints:`);
+const HOST = process.env.HOST || '0.0.0.0';
+app.listen(PORT, HOST, () => {
+  console.log(`Server running on http://${HOST}:${PORT}`);
+  console.log('Available endpoints:');
+  console.log(`- GET    /api/health`);
   console.log(`- POST   /api/bots/start`);
   console.log(`- POST   /api/bots/stop`);
   console.log(`- GET    /api/bots/status`);
-  console.log(`- GET    /api/health`);
 });
