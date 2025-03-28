@@ -5,10 +5,11 @@ const FNLB = require('fnlb');
 
 const app = express();
 
-// Configure CORS to allow requests from your frontend
+// Enhanced CORS configuration
 app.use(cors({
-  origin: 'http://localhost:8000', // Update if your frontend uses different port
-  methods: ['GET', 'POST']
+  origin: ['http://localhost:8000', 'http://127.0.0.1:8000'],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type']
 }));
 
 // Middleware
@@ -77,8 +78,16 @@ app.get('/api/bots/status', (req, res) => {
   });
 });
 
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on http://0.0.0.0:${PORT}`);
 });
