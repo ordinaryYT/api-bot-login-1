@@ -5,7 +5,7 @@ const FNLB = require('fnlb');
 
 const app = express();
 
-// Enhanced CORS configuration
+// Configure CORS properly
 app.use(cors({
   origin: ['http://localhost:8000', 'http://127.0.0.1:8000'],
   methods: ['GET', 'POST', 'OPTIONS'],
@@ -18,7 +18,7 @@ app.use(express.json());
 // Bot manager instance
 let botManager = null;
 
-// API Endpoints
+// API Routes
 app.post('/api/bots/start', async (req, res) => {
   try {
     if (botManager) {
@@ -90,4 +90,9 @@ app.get('/api/health', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on http://0.0.0.0:${PORT}`);
+  console.log('API Endpoints:');
+  console.log(`- POST   /api/bots/start`);
+  console.log(`- POST   /api/bots/stop`);
+  console.log(`- GET    /api/bots/status`);
+  console.log(`- GET    /api/health`);
 });

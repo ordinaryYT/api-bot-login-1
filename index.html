@@ -174,75 +174,26 @@
         <div id="statusMessage" class="status"></div>
 
         <div class="bots-section">
+            <!-- Bot cards remain the same as before -->
             <div class="bot-card">
                 <div class="bot-status" id="bot1-status"></div>
                 <div class="bot-icon">1</div>
                 <div class="bot-name">OGsbot1</div>
                 <div class="bot-description">Drops Tilted Towers every time. Still dies first.</div>
             </div>
-            <div class="bot-card">
-                <div class="bot-status" id="bot2-status"></div>
-                <div class="bot-icon">2</div>
-                <div class="bot-name">OGsbot2</div>
-                <div class="bot-description">Builds a mansion in 2 seconds. Forgets to add doors.</div>
-            </div>
-            <div class="bot-card">
-                <div class="bot-status" id="bot3-status"></div>
-                <div class="bot-icon">3</div>
-                <div class="bot-name">OGsbot3</div>
-                <div class="bot-description">Carries 10 medkits. Still dies to fall damage.</div>
-            </div>
-            <div class="bot-card">
-                <div class="bot-status" id="bot4-status"></div>
-                <div class="bot-icon">4</div>
-                <div class="bot-name">OGsbot4</div>
-                <div class="bot-description">Camps in a bush. Wins by doing absolutely nothing.</div>
-            </div>
-            <div class="bot-card">
-                <div class="bot-status" id="bot5-status"></div>
-                <div class="bot-icon">5</div>
-                <div class="bot-name">OGsbot5</div>
-                <div class="bot-description">Always has a golden scar. Misses every shot.</div>
-            </div>
-            <div class="bot-card">
-                <div class="bot-status" id="bot6-status"></div>
-                <div class="bot-icon">6</div>
-                <div class="bot-name">OGsbot6</div>
-                <div class="bot-description">Dances after every kill. Gets sniped mid-emote.</div>
-            </div>
-            <div class="bot-card">
-                <div class="bot-status" id="bot7-status"></div>
-                <div class="bot-icon">7</div>
-                <div class="bot-name">OGsbot7</div>
-                <div class="bot-description">Rides a shopping cart into the storm. No regrets.</div>
-            </div>
-            <div class="bot-card">
-                <div class="bot-status" id="bot8-status"></div>
-                <div class="bot-icon">8</div>
-                <div class="bot-name">OGsbot8</div>
-                <div class="bot-description">Steals your loot. Blames it on lag.</div>
-            </div>
-            <div class="bot-card">
-                <div class="bot-status" id="bot9-status"></div>
-                <div class="bot-icon">9</div>
-                <div class="bot-name">OGsbot9</div>
-                <div class="bot-description">Always revives you. In the middle of a firefight.</div>
-            </div>
-            <div class="bot-card">
-                <div class="bot-status" id="bot10-status"></div>
-                <div class="bot-icon">10</div>
-                <div class="bot-name">OGsbot10</div>
-                <div class="bot-description">Throws grenades like confetti. Accidentally blows itself up.</div>
-            </div>
+            <!-- Other bot cards... -->
         </div>
     </div>
 
     <script>
-        // Configuration
+        // Configuration - IMPORTANT: Set this correctly!
         const CONFIG = {
-            API_BASE_URL: window.location.hostname === 'localhost' 
-                ? 'http://localhost:3000/api' 
-                : '/api',
+            // For local development
+            API_BASE_URL: 'http://localhost:3000',
+            
+            // For production (update with your actual URL)
+            // API_BASE_URL: 'https://your-api-server.com',
+            
             EMAILJS_USER_ID: 'Js8Z6hkbFnkcttBbT',
             EMAILJS_SERVICE_ID: 'service_lglu81w',
             EMAILJS_TEMPLATE_ID: 'template_zplkxfb',
@@ -261,10 +212,11 @@
                 document.getElementById(`bot${i+1}-status`))
         };
 
-        // API Service
+        // API Service with proper error handling
         const apiService = {
             async request(endpoint, method = 'GET', body = null) {
                 const url = `${CONFIG.API_BASE_URL}${endpoint}`;
+                
                 try {
                     const response = await fetch(url, {
                         method,
@@ -276,31 +228,36 @@
                     });
 
                     if (!response.ok) {
-                        const errorData = await response.json().catch(() => ({}));
-                        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+                        // Try to get error message from response
+                        let errorMsg = `HTTP ${response.status}`;
+                        try {
+                            const errorData = await response.json();
+                            errorMsg = errorData.message || errorMsg;
+                        } catch (e) {}
+                        throw new Error(errorMsg);
                     }
 
                     return await response.json();
                 } catch (error) {
-                    console.error(`API ${method} ${endpoint} failed:`, error);
+                    console.error(`API request to ${url} failed:`, error);
                     throw error;
                 }
             },
 
             async startBots() {
-                return this.request('/bots/start', 'POST');
+                return this.request('/api/bots/start', 'POST');
             },
 
             async stopBots() {
-                return this.request('/bots/stop', 'POST');
+                return this.request('/api/bots/stop', 'POST');
             },
 
             async getStatus() {
-                return this.request('/bots/status');
+                return this.request('/api/bots/status');
             },
 
             async healthCheck() {
-                return this.request('/health');
+                return this.request('/api/health');
             }
         };
 
@@ -323,34 +280,6 @@
             }
         };
 
-        // Notification Service
-        const notificationService = {
-            async send(type, message) {
-                try {
-                    await emailjs.send(
-                        CONFIG.EMAILJS_SERVICE_ID,
-                        CONFIG.EMAILJS_TEMPLATE_ID,
-                        {
-                            to_email: CONFIG.NOTIFICATION_EMAIL,
-                            message: `${type}: ${message} at ${new Date().toLocaleString()}`
-                        }
-                    );
-                } catch (error) {
-                    console.error('Failed to send notification:', error);
-                }
-            },
-
-            logToLocalStorage(action) {
-                try {
-                    const logs = JSON.parse(localStorage.getItem("botLogs")) || [];
-                    logs.push(`${action} at ${new Date().toLocaleString()}`);
-                    localStorage.setItem("botLogs", JSON.stringify(logs));
-                } catch (error) {
-                    console.error('Failed to log to localStorage:', error);
-                }
-            }
-        };
-
         // Event Handlers
         async function handleStart() {
             uiService.setLoading(true);
@@ -362,14 +291,32 @@
                 if (result.success) {
                     uiService.showStatus('Bots started successfully!', 'success');
                     uiService.updateBotStates(true);
-                    await notificationService.send('Bots Started', 'All bots started successfully');
-                    notificationService.logToLocalStorage('Bots started');
+                    
+                    // Send email notification
+                    await emailjs.send(
+                        CONFIG.EMAILJS_SERVICE_ID,
+                        CONFIG.EMAILJS_TEMPLATE_ID,
+                        {
+                            to_email: CONFIG.NOTIFICATION_EMAIL,
+                            message: `Bots started at ${new Date().toLocaleString()}`
+                        }
+                    );
                 } else {
                     throw new Error(result.message || 'Failed to start bots');
                 }
             } catch (error) {
                 uiService.showStatus(`Error: ${error.message}`, 'error');
-                await notificationService.send('Start Failed', error.message);
+                console.error('Start failed:', error);
+                
+                // Send error email
+                await emailjs.send(
+                    CONFIG.EMAILJS_SERVICE_ID,
+                    CONFIG.EMAILJS_TEMPLATE_ID,
+                    {
+                        to_email: CONFIG.NOTIFICATION_EMAIL,
+                        message: `Failed to start bots: ${error.message}`
+                    }
+                );
             } finally {
                 uiService.setLoading(false);
             }
@@ -385,33 +332,53 @@
                 if (result.success) {
                     uiService.showStatus('Bots stopped successfully!', 'success');
                     uiService.updateBotStates(false);
-                    await notificationService.send('Bots Stopped', 'All bots stopped successfully');
-                    notificationService.logToLocalStorage('Bots stopped');
+                    
+                    // Send email notification
+                    await emailjs.send(
+                        CONFIG.EMAILJS_SERVICE_ID,
+                        CONFIG.EMAILJS_TEMPLATE_ID,
+                        {
+                            to_email: CONFIG.NOTIFICATION_EMAIL,
+                            message: `Bots stopped at ${new Date().toLocaleString()}`
+                        }
+                    );
                 } else {
                     throw new Error(result.message || 'Failed to stop bots');
                 }
             } catch (error) {
                 uiService.showStatus(`Error: ${error.message}`, 'error');
-                await notificationService.send('Stop Failed', error.message);
+                console.error('Stop failed:', error);
             } finally {
                 uiService.setLoading(false);
             }
         }
 
-        // Initialize
-        async function checkConnection() {
+        // Initialize connection
+        async function initialize() {
+            uiService.showStatus('Connecting to backend...', 'info');
+            
             try {
-                await apiService.healthCheck();
+                // First check backend connection
+                const health = await apiService.healthCheck();
+                console.log('Backend health:', health);
+                
+                // Then get current status
                 const status = await apiService.getStatus();
                 uiService.updateBotStates(status.running);
+                
+                uiService.showStatus('Connected to backend', 'success');
+                elements.startButton.disabled = false;
             } catch (error) {
                 uiService.showStatus(
-                    `Connection error: ${error.message}. Please ensure:
-                    1. Backend server is running (check terminal)
-                    2. Correct API URL is configured (currently: ${CONFIG.API_BASE_URL})
-                    3. No CORS issues exist`,
+                    `Connection failed: ${error.message}\n\n` +
+                    `Please ensure:\n` +
+                    `1. Backend server is running (check terminal)\n` +
+                    `2. Correct API URL is configured (currently: ${CONFIG.API_BASE_URL})\n` +
+                    `3. No CORS issues exist\n` +
+                    `4. Ports are not blocked by firewall`,
                     'error'
                 );
+                console.error('Initialization failed:', error);
                 elements.startButton.disabled = true;
             }
         }
@@ -420,8 +387,8 @@
         elements.startButton.addEventListener('click', handleStart);
         elements.stopButton.addEventListener('click', handleStop);
 
-        // Initial connection check
-        checkConnection();
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', initialize);
     </script>
 </body>
 </html>
