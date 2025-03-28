@@ -165,22 +165,6 @@
             line-height: 1.5;
         }
 
-        .loading-bar {
-            height: 4px;
-            background-color: #333;
-            margin-top: 10px;
-            border-radius: 2px;
-            overflow: hidden;
-            display: none;
-        }
-
-        .loading-progress {
-            height: 100%;
-            width: 0;
-            background-color: #007bff;
-            transition: width 0.3s ease;
-        }
-
         @media (max-width: 768px) {
             h1 {
                 font-size: 2rem;
@@ -207,9 +191,6 @@
         </div>
         
         <div id="statusMessage" class="status"></div>
-        <div class="loading-bar" id="loadingBar">
-            <div class="loading-progress" id="loadingProgress"></div>
-        </div>
 
         <div class="bots-section">
             <div class="bot-card">
@@ -285,9 +266,14 @@
         const startButton = document.getElementById('startButton');
         const stopButton = document.getElementById('stopButton');
         const statusMessage = document.getElementById('statusMessage');
-        const loadingBar = document.getElementById('loadingBar');
-        const loadingProgress = document.getElementById('loadingProgress');
         const botStatusElements = Array.from({length: 10}, (_, i) => document.getElementById(`bot${i+1}-status`));
+
+        // API Configuration
+        const API_BASE_URL = 'http://localhost:3000';
+        const API_HEADERS = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        };
 
         // Bot control functions
         async function startBots() {
@@ -295,66 +281,41 @@
             stopButton.disabled = false;
             statusMessage.textContent = 'Starting bots... This may take 5-20 minutes.';
             statusMessage.className = 'status active';
-            loadingBar.style.display = 'block';
-            
-            // Show loading progress
-            let progress = 0;
-            const progressInterval = setInterval(() => {
-                progress = Math.min(progress + Math.random() * 10, 90);
-                loadingProgress.style.width = `${progress}%`;
-            }, 1000);
             
             try {
-                const response = await fetch('/api/bots/start', {
+                const response = await fetch(`${API_BASE_URL}/api/bots/start`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
+                    headers: API_HEADERS
                 });
-                
+
+                // Handle non-JSON responses
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    throw new Error(text || 'Invalid server response');
+                }
+
                 const data = await response.json();
                 
-                if (!response.ok) {
+                if (!response.ok || !data.success) {
                     throw new Error(data.message || 'Failed to start bots');
                 }
-                
-                // Complete loading
-                clearInterval(progressInterval);
-                loadingProgress.style.width = '100%';
-                setTimeout(() => {
-                    loadingBar.style.display = 'none';
-                }, 500);
                 
                 // Update UI
                 statusMessage.textContent = 'Bots started successfully!';
                 statusMessage.className = 'status active success';
                 startButton.textContent = 'Bots Running';
-                updateBotStatuses(data.status.bots);
+                updateBotStatus(true);
                 
                 // Send success email
-                await emailjs.send("service_lglu81w", "template_zplkxfb", {
-                    to_email: "baileyksmith2010@gmail.com",
-                    message: `Bots started successfully at: ${new Date().toLocaleString()}`
-                });
+                await sendEmail(`Bots started successfully at: ${new Date().toLocaleString()}`);
                 
-                // Log to localStorage
-                const logs = getLogs();
-                logs.push(`Bots started at: ${new Date().toLocaleString()}`);
-                saveLogs(logs);
+                // Save log
+                saveLog(`Bots started at: ${new Date().toLocaleString()}`);
             } catch (error) {
-                console.error('Error:', error);
-                clearInterval(progressInterval);
-                loadingBar.style.display = 'none';
-                statusMessage.textContent = `Error starting bots: ${error.message}`;
-                statusMessage.className = 'status active error';
+                handleError(error, 'starting');
                 startButton.disabled = false;
                 startButton.textContent = 'Start Bots';
-                
-                // Send error email
-                await emailjs.send("service_lglu81w", "template_zplkxfb", {
-                    to_email: "baileyksmith2010@gmail.com",
-                    message: `Failed to start bots: ${error.message}`
-                });
             }
         }
 
@@ -363,96 +324,104 @@
             stopButton.disabled = true;
             statusMessage.textContent = 'Stopping bots...';
             statusMessage.className = 'status active';
-            loadingBar.style.display = 'block';
-            loadingProgress.style.width = '0%';
             
             try {
-                const response = await fetch('/api/bots/stop', {
+                const response = await fetch(`${API_BASE_URL}/api/bots/stop`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
+                    headers: API_HEADERS
                 });
-                
+
+                // Handle non-JSON responses
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    throw new Error(text || 'Invalid server response');
+                }
+
                 const data = await response.json();
                 
-                if (!response.ok) {
+                if (!response.ok || !data.success) {
                     throw new Error(data.message || 'Failed to stop bots');
                 }
-                
-                // Complete loading
-                loadingProgress.style.width = '100%';
-                setTimeout(() => {
-                    loadingBar.style.display = 'none';
-                }, 500);
                 
                 // Update UI
                 statusMessage.textContent = 'Bots stopped successfully!';
                 statusMessage.className = 'status active success';
                 startButton.textContent = 'Start Bots';
-                updateBotStatuses(data.status.bots);
+                updateBotStatus(false);
                 
                 // Send notification email
-                await emailjs.send("service_lglu81w", "template_zplkxfb", {
-                    to_email: "baileyksmith2010@gmail.com",
-                    message: `Bots stopped at: ${new Date().toLocaleString()}`
-                });
+                await sendEmail(`Bots stopped at: ${new Date().toLocaleString()}`);
                 
-                // Update logs
-                const logs = getLogs();
-                logs.push(`Bots stopped at: ${new Date().toLocaleString()}`);
-                saveLogs(logs);
+                // Save log
+                saveLog(`Bots stopped at: ${new Date().toLocaleString()}`);
             } catch (error) {
-                console.error('Error:', error);
-                loadingBar.style.display = 'none';
-                statusMessage.textContent = `Error stopping bots: ${error.message}`;
-                statusMessage.className = 'status active error';
+                handleError(error, 'stopping');
                 stopButton.disabled = false;
             }
         }
 
-        function updateBotStatuses(bots) {
-            bots.forEach((bot, index) => {
-                if (index < botStatusElements.length) {
-                    if (bot.status === 'active') {
-                        botStatusElements[index].classList.add('active');
-                    } else {
-                        botStatusElements[index].classList.remove('active');
-                    }
+        // Helper functions
+        function updateBotStatus(isRunning) {
+            botStatusElements.forEach(el => {
+                if (isRunning) {
+                    el.classList.add('active');
+                } else {
+                    el.classList.remove('active');
                 }
             });
         }
 
-        // Log management
-        function getLogs() {
+        async function sendEmail(message) {
             try {
-                const logs = localStorage.getItem("botLogs");
-                return logs ? JSON.parse(logs) : [];
-            } catch (e) {
-                console.error('Error reading logs:', e);
-                return [];
+                await emailjs.send("service_lglu81w", "template_zplkxfb", {
+                    to_email: "baileyksmith2010@gmail.com",
+                    message: message
+                });
+            } catch (emailError) {
+                console.error('Email error:', emailError);
             }
         }
 
-        function saveLogs(logs) {
+        function saveLog(message) {
             try {
+                const logs = JSON.parse(localStorage.getItem("botLogs") || []);
+                logs.push(message);
                 localStorage.setItem("botLogs", JSON.stringify(logs));
             } catch (e) {
-                console.error('Error saving logs:', e);
+                console.error('Error saving log:', e);
             }
+        }
+
+        function handleError(error, action) {
+            console.error(`Error ${action} bots:`, error);
+            statusMessage.textContent = `Error ${action} bots: ${error.message}`;
+            statusMessage.className = 'status active error';
+            
+            // Send error email
+            sendEmail(`Failed ${action} bots: ${error.message}`);
         }
 
         // Check initial bot status
         async function checkBotStatus() {
             try {
-                const response = await fetch('/api/bots/status');
+                const response = await fetch(`${API_BASE_URL}/api/bots/status`, {
+                    headers: API_HEADERS
+                });
+
+                // Handle non-JSON responses
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Invalid server response');
+                }
+
                 const data = await response.json();
                 
-                if (data.status && data.status.running) {
+                if (data.running) {
                     startButton.disabled = true;
                     stopButton.disabled = false;
                     startButton.textContent = 'Bots Running';
-                    updateBotStatuses(data.status.bots);
+                    updateBotStatus(true);
                 }
             } catch (error) {
                 console.error('Error checking bot status:', error);

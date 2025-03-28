@@ -7,17 +7,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Enhanced bot control with status tracking
+// Bot control variables
 let botController = null;
-const botStatus = {
-    running: false,
-    bots: Array(10).fill({ status: 'inactive', lastActivity: null })
-};
+let botsRunning = false;
 
 // API Endpoints
 app.post('/api/bots/start', async (req, res) => {
     try {
-        if (botStatus.running) {
+        if (botsRunning) {
             return res.status(400).json({ 
                 success: false, 
                 message: 'Bots are already running' 
@@ -27,20 +24,14 @@ app.post('/api/bots/start', async (req, res) => {
         botController = new FNLB();
         await botController.start({
             apiToken: process.env.FNLB_API_TOKEN || 'DGfCBefvjOU-UORpSFBh8gbArVEGkKK5xb-BB7kZk8NfEFj6hiCf8v2Nefu6',
-            botsPerShard: 20
+            botsPerShard: 10
         });
 
-        // Update status
-        botStatus.running = true;
-        botStatus.bots = botStatus.bots.map(() => ({
-            status: 'active',
-            lastActivity: new Date().toISOString()
-        }));
-
+        botsRunning = true;
         res.json({ 
             success: true, 
             message: 'Bots started successfully',
-            status: botStatus
+            running: true
         });
     } catch (error) {
         console.error('Error starting bots:', error);
@@ -53,7 +44,7 @@ app.post('/api/bots/start', async (req, res) => {
 
 app.post('/api/bots/stop', async (req, res) => {
     try {
-        if (!botStatus.running || !botController) {
+        if (!botsRunning || !botController) {
             return res.status(400).json({ 
                 success: false, 
                 message: 'No bots are currently running' 
@@ -62,18 +53,12 @@ app.post('/api/bots/stop', async (req, res) => {
 
         await botController.stop();
         botController = null;
-        
-        // Update status
-        botStatus.running = false;
-        botStatus.bots = botStatus.bots.map(bot => ({
-            ...bot,
-            status: 'inactive'
-        }));
+        botsRunning = false;
 
         res.json({ 
             success: true, 
             message: 'Bots stopped successfully',
-            status: botStatus
+            running: false
         });
     } catch (error) {
         console.error('Error stopping bots:', error);
@@ -87,16 +72,11 @@ app.post('/api/bots/stop', async (req, res) => {
 app.get('/api/bots/status', (req, res) => {
     res.json({ 
         success: true,
-        status: botStatus
-    });
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({
-        success: false,
-        message: 'Internal server error'
+        running: botsRunning,
+        bots: Array(10).fill({ 
+            status: botsRunning ? 'active' : 'inactive',
+            lastPing: new Date().toISOString()
+        })
     });
 });
 
