@@ -5,17 +5,30 @@ const FNLB = require('fnlb');
 
 const app = express();
 
-// Fix CORS - allows all connections during development
-app.use(cors());
+// Configure CORS for Vercel
+const allowedOrigins = [
+  'https://your-frontend.vercel.app', // Your Vercel frontend URL
+  'http://localhost:8000'             // For local testing
+];
 
-// Parse JSON requests
+app.use(cors({
+  origin: function(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type']
+}));
+
 app.use(express.json());
 
-// Bot manager instance
 let botManager = null;
 
 // API Endpoints
-app.post('/api/start', async (req, res) => {
+app.post('/start', async (req, res) => {
   try {
     if (botManager) {
       return res.status(400).json({ 
@@ -26,8 +39,8 @@ app.post('/api/start', async (req, res) => {
 
     botManager = new FNLB();
     await botManager.start({
-      apiToken: process.env.FNLB_API_TOKEN || 'DGfCBefvjOU-UORpSFBh8gbArVEGkKK5xb-BB7kZk8NfEFj6hiCf8v2Nefu6', // REPLACE THIS
-      botsPerShard: 20
+      apiToken: process.env.FNLB_API_TOKEN, // Set in Vercel env vars
+      botsPerShard: 10
     });
 
     res.json({ 
@@ -43,7 +56,7 @@ app.post('/api/start', async (req, res) => {
   }
 });
 
-app.post('/api/stop', async (req, res) => {
+app.post('/stop', async (req, res) => {
   try {
     if (!botManager) {
       return res.status(400).json({
@@ -68,22 +81,18 @@ app.post('/api/stop', async (req, res) => {
   }
 });
 
-app.get('/api/status', (req, res) => {
+app.get('/status', (req, res) => {
   res.json({
     running: !!botManager
   });
 });
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
+app.get('/health', (req, res) => {
   res.json({
-    status: 'online',
+    status: 'healthy',
     timestamp: new Date().toISOString()
   });
 });
 
-// Start server on port 3000
-const PORT = 3000;
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ Backend running on http://localhost:${PORT}`);
-});
+// Export for Vercel
+module.exports = app;
