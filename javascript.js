@@ -5,21 +5,17 @@ const FNLB = require('fnlb');
 
 const app = express();
 
-// Configure CORS properly
-app.use(cors({
-  origin: ['http://localhost:8000', 'http://127.0.0.1:8000'],
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type']
-}));
+// Fix CORS - allows all connections during development
+app.use(cors());
 
-// Middleware
+// Parse JSON requests
 app.use(express.json());
 
 // Bot manager instance
 let botManager = null;
 
-// API Routes
-app.post('/api/bots/start', async (req, res) => {
+// API Endpoints
+app.post('/api/start', async (req, res) => {
   try {
     if (botManager) {
       return res.status(400).json({ 
@@ -30,7 +26,7 @@ app.post('/api/bots/start', async (req, res) => {
 
     botManager = new FNLB();
     await botManager.start({
-      apiToken: process.env.FNLB_API_TOKEN || 'DGfCBefvjOU-UORpSFBh8gbArVEGkKK5xb-BB7kZk8NfEFj6hiCf8v2Nefu6',
+      apiToken: process.env.FNLB_API_TOKEN || 'DGfCBefvjOU-UORpSFBh8gbArVEGkKK5xb-BB7kZk8NfEFj6hiCf8v2Nefu6', // REPLACE THIS
       botsPerShard: 20
     });
 
@@ -47,7 +43,7 @@ app.post('/api/bots/start', async (req, res) => {
   }
 });
 
-app.post('/api/bots/stop', async (req, res) => {
+app.post('/api/stop', async (req, res) => {
   try {
     if (!botManager) {
       return res.status(400).json({
@@ -72,7 +68,7 @@ app.post('/api/bots/stop', async (req, res) => {
   }
 });
 
-app.get('/api/bots/status', (req, res) => {
+app.get('/api/status', (req, res) => {
   res.json({
     running: !!botManager
   });
@@ -81,18 +77,13 @@ app.get('/api/bots/status', (req, res) => {
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
-    status: 'healthy',
+    status: 'online',
     timestamp: new Date().toISOString()
   });
 });
 
-// Start server
-const PORT = process.env.PORT || 3000;
+// Start server on port 3000
+const PORT = 3000;
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on http://0.0.0.0:${PORT}`);
-  console.log('API Endpoints:');
-  console.log(`- POST   /api/bots/start`);
-  console.log(`- POST   /api/bots/stop`);
-  console.log(`- GET    /api/bots/status`);
-  console.log(`- GET    /api/health`);
+  console.log(`✅ Backend running on http://localhost:${PORT}`);
 });
